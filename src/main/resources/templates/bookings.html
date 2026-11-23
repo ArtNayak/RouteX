@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('My Bookings')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<div class="page" style="padding-top:0">
+  <div class="container-md">
+    <div class="page-title">My Bookings</div>
+    <div class="page-sub">All your travel reservations in one place</div>
+
+    <div th:if="${#lists.isEmpty(bookings)}" class="empty-state">
+      <div class="empty-icon">&#127915;</div>
+      <div class="empty-title">No bookings yet</div>
+      <p>Book your first bus ticket!</p>
+      <a class="btn btn-primary" style="margin-top:24px" th:href="@{/search}">Search Buses &rarr;</a>
+    </div>
+
+    <div class="booking-item" th:each="b : ${bookings}">
+      <div class="booking-status-dot"
+           th:classappend="${b.status == 'CONFIRMED'} ? 'status-confirmed' : 'status-cancelled'"></div>
+      <div class="booking-info">
+        <div class="booking-route" th:text="${b.bus.fromCity + ' → ' + b.bus.toCity}">A → B</div>
+        <div class="booking-meta">
+          <span th:text="${b.bus.operatorName + ' · ' + b.bus.busType}"></span><br>
+          <span th:text="${#temporals.format(b.travelDate, 'dd MMM yyyy') + ' · Departs ' + b.bus.departureTime}"></span><br>
+          Seats: <strong th:text="${b.seatNumbers}"></strong> · <span th:text="${b.passengerName}"></span>
+        </div>
+        <div style="margin-top:8px">
+          <span class="badge" th:classappend="${b.status == 'CONFIRMED'} ? 'badge-success' : 'badge-danger'" th:text="${b.status}"></span>
+          <a style="font-size:12px;color:var(--text3);margin-left:8px" th:href="@{/bookings/{ref}(ref=${b.bookingRef})}"
+             th:text="${b.bookingRef}"></a>
+        </div>
+      </div>
+      <div class="booking-price" th:text="'₹' + ${#numbers.formatDecimal(b.totalAmount, 1, 'COMMA', 0, 'POINT')}"></div>
+      <div class="booking-actions">
+        <a class="btn btn-secondary btn-sm" th:href="@{/bookings/{ref}(ref=${b.bookingRef})}">Ticket</a>
+        <!-- no JavaScript: a native <details> acts as the "are you sure?" step -->
+        <details th:if="${b.status == 'CONFIRMED'}">
+          <summary class="btn btn-danger btn-sm" style="list-style:none;cursor:pointer">Cancel</summary>
+          <form th:action="@{/bookings/{ref}/cancel(ref=${b.bookingRef})}" method="post" style="margin-top:8px">
+            <button class="btn btn-danger btn-sm" type="submit">Yes, cancel booking</button>
+          </form>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

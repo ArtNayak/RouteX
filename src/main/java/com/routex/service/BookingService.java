@@ -6,6 +6,7 @@ import com.routex.model.User;
 import com.routex.repository.BookingRepository;
 import com.routex.repository.BusRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Business Logic Layer — Booking operations and Bill Generation.
@@ -28,6 +30,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class BookingService {
 
+    public static final int MAX_SEATS_PER_BOOKING = 6;
+
     private final BookingRepository bookingRepository;
     private final BusRepository busRepository;
     private final BusService busService;
@@ -36,51 +40,58 @@ public class BookingService {
     //  Create Booking  (§4.1 Stimulus/Response)
     // ----------------------------------------------------------------
 
+    /**
+     * Books seats. The price is always computed here from the bus, never taken from the caller, and the
+     * (simulated) payment reference is generated here too.
+     *
+     * The bus row is locked first, so concurrent bookings of the same bus run one at a time and the
+     * availability check below cannot be raced (REQ-4.1.3).
+     */
     @Transactional
     public Booking createBooking(User user, Long busId, LocalDate travelDate,
                                  List<Integer> seats, String passengerName,
                                  String passengerPhone, int passengerAge,
-                                 String paymentMethod, String paymentReference) {
+                                 String paymentMethod) {
 
-        Bus bus = busRepository.findById(busId)
+        Bus bus = busRepository.findByIdForUpdate(busId)
                 .orElseThrow(() -> new IllegalArgumentException("Bus not found: " + busId));
 
+        if (travelDate == null || travelDate.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Travel date cannot be in the past.");
+        }
+        List<Integer> chosen = validateSeats(bus, seats);
+
         // REQ-4.1.3: prevent booking already-reserved seats
-        if (!busService.areSeatsAvailable(busId, travelDate, seats)) {
+        if (!busService.areSeatsAvailable(busId, travelDate, chosen)) {
             throw new IllegalStateException(
                 "One or more selected seats are already booked for this date.");
         }
 
+        String method = normalizePaymentMethod(paymentMethod);
+        double total = bus.getPricePerSeat() * chosen.size();
+
         // REQ-4.1.4: store booking details (name, seat, price, date)
-        String seatStr = seats.stream()
-                .map(String::valueOf)
-                .reduce((a, b) -> a + "," + b)
-                .orElse("");
-
-        double total = bus.getPricePerSeat() * seats.size();
-        String normalizedMethod = normalizePaymentMethod(paymentMethod);
-        String normalizedReference = paymentReference == null ? "" : paymentReference.trim();
-        if (normalizedReference.isBlank()) {
-            throw new IllegalArgumentException("Payment reference is required.");
-        }
-
         Booking booking = Booking.builder()
-                .bookingRef(generateRef())
+                .bookingRef("TMP-" + UUID.randomUUID())   // replaced below once the id is known
                 .user(user)
                 .bus(bus)
                 .travelDate(travelDate)
-                .seatNumbers(seatStr)
-                .passengerName(passengerName)
-                .passengerPhone(passengerPhone)
+                .seatNumbers(String.join(",", chosen.stream().map(String::valueOf).toList()))
+                .passengerName(passengerName.trim())
+                .passengerPhone(passengerPhone.trim())
                 .passengerAge(passengerAge)
                 .totalAmount(total)
-                .paymentMethod(normalizedMethod)
-                .paymentReference(normalizedReference)
+                .paymentMethod(method)
+                .paymentReference("SIM-" + method + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT))
                 .paymentStatus("PAID")
                 .status("CONFIRMED")
                 .bookedAt(LocalDateTime.now())
                 .build();
 
+        booking = bookingRepository.save(booking);
+        // reference built from the database id, so two bookings can never share one
+        booking.setBookingRef(String.format("BK-%s-%05d",
+                LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")), booking.getId()));
         // REQ-4.1.5: confirmation stored — returned to controller to confirm to user
         return bookingRepository.save(booking);
     }
@@ -89,18 +100,15 @@ public class BookingService {
     //  Cancel Booking
     // ----------------------------------------------------------------
 
+    /** Cancels a booking. Only its owner or an administrator may do so. */
     @Transactional
-    public Booking cancelBooking(String bookingRef, Long requestingUserId) {
+    public Booking cancelBooking(String bookingRef, User requester) {
         Booking booking = bookingRepository.findByBookingRef(bookingRef)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + bookingRef));
-
-        boolean isOwner  = booking.getUser().getId().equals(requestingUserId);
-        boolean isAdmin  = true; // admin check delegated to controller / security config
-
-        if (!isOwner && !isAdmin) {
-            throw new SecurityException("Not authorised to cancel this booking.");
+        requireOwnerOrAdmin(booking, requester);
+        if (!"CONFIRMED".equals(booking.getStatus())) {
+            throw new IllegalStateException("This booking is already cancelled.");
         }
-
         booking.setStatus("CANCELLED");
         return bookingRepository.save(booking);
     }
@@ -119,6 +127,18 @@ public class BookingService {
 
     public Optional<Booking> findByRef(String ref) {
         return bookingRepository.findByBookingRef(ref);
+    }
+
+    /** A booking's details, but only for its owner or an administrator. */
+    @Transactional(readOnly = true)
+    public Booking getBookingFor(String ref, User requester) {
+        Booking booking = bookingRepository.findByBookingRef(ref)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found: " + ref));
+        requireOwnerOrAdmin(booking, requester);
+        // touch the lazy associations while the session is open
+        booking.getBus().getId();
+        booking.getUser().getId();
+        return booking;
     }
 
     // ----------------------------------------------------------------
@@ -140,7 +160,6 @@ public class BookingService {
     public String generateBill(Booking booking) {
         DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy");
         Bus bus = booking.getBus();
-
         return String.format("""
             ============================================================
                           ROUTEX — BOOKING RECEIPT
@@ -186,10 +205,32 @@ public class BookingService {
     //  Helpers
     // ----------------------------------------------------------------
 
-    private String generateRef() {
-        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        long seq = bookingRepository.count() + 1;
-        return String.format("BK-%s-%04d", date, seq);
+    private void requireOwnerOrAdmin(Booking booking, User requester) {
+        boolean isOwner = requester != null && booking.getUser().getId().equals(requester.getId());
+        boolean isAdmin = requester != null && "ADMIN".equals(requester.getRole());
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("You are not allowed to access this booking.");
+        }
+    }
+
+    /** Seats must be 1..totalSeats, distinct, and at most MAX_SEATS_PER_BOOKING. Returns them sorted. */
+    private List<Integer> validateSeats(Bus bus, List<Integer> seats) {
+        if (seats == null || seats.isEmpty()) {
+            throw new IllegalArgumentException("Select at least one seat.");
+        }
+        List<Integer> distinct = seats.stream().distinct().sorted().toList();
+        if (distinct.size() != seats.size()) {
+            throw new IllegalArgumentException("The same seat was selected more than once.");
+        }
+        if (distinct.size() > MAX_SEATS_PER_BOOKING) {
+            throw new IllegalArgumentException("Maximum " + MAX_SEATS_PER_BOOKING + " seats per booking.");
+        }
+        for (Integer seat : distinct) {
+            if (seat == null || seat < 1 || seat > bus.getTotalSeats()) {
+                throw new IllegalArgumentException("Seat " + seat + " does not exist on this bus.");
+            }
+        }
+        return distinct;
     }
 
     private String normalizePaymentMethod(String paymentMethod) {

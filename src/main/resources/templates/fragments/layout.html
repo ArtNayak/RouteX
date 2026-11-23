@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<!-- <head> shared by every page: <head th:replace="~{fragments/layout :: head('Page title')}"></head> -->
+<head th:fragment="head(title)">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="${title} + ' | RouteX'">RouteX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+
+<body>
+
+<!-- Navigation bar -->
+<nav th:fragment="nav">
+  <a class="nav-logo" th:href="@{/}" style="text-decoration:none">RouteX</a>
+  <div class="nav-links">
+    <a class="nav-btn ghost" th:href="@{/}">Home</a>
+    <a class="nav-btn ghost" th:href="@{/search}">Book Ticket</a>
+    <a class="nav-btn ghost" th:href="@{/bookings}">My Bookings</a>
+    <a class="nav-btn ghost" sec:authorize="hasRole('ADMIN')" th:href="@{/admin}">Admin</a>
+    <span class="nav-user-pill" th:if="${currentUser != null}" th:text="${currentUser.name}">User</span>
+    <a class="nav-btn ghost" sec:authorize="!isAuthenticated()" th:href="@{/login}">Login</a>
+    <form class="nav-form" sec:authorize="isAuthenticated()" th:action="@{/logout}" method="post">
+      <button class="nav-btn danger" type="submit">Logout</button>
+    </form>
+  </div>
+</nav>
+
+<!-- Messages passed with redirects: success text and a list of errors -->
+<div th:fragment="flash" style="padding-top:88px">
+  <div class="flash success" th:if="${success}" th:text="${success}"></div>
+  <div class="flash error" th:if="${errors}">
+    <ul><li th:each="e : ${errors}" th:text="${e}"></li></ul>
+  </div>
+</div>
+
+</body>
+</html>

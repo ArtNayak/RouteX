@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Admin Dashboard')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<div class="page" style="padding-top:0">
+  <div class="container">
+    <div class="page-title">Admin Dashboard</div>
+    <div class="page-sub">Manage buses, routes, bookings, and users</div>
+
+    <div class="admin-stat-grid">
+      <div class="admin-stat-card" style="--card-accent:#6c63ff">
+        <div class="admin-stat-icon">BK</div>
+        <div class="admin-stat-num" th:text="${totalBookings}">0</div>
+        <div class="admin-stat-lbl">Total Bookings</div>
+      </div>
+      <div class="admin-stat-card" style="--card-accent:#43e97b">
+        <div class="admin-stat-icon">₹</div>
+        <div class="admin-stat-num" th:text="'₹' + ${#numbers.formatDecimal(totalRevenue, 1, 'COMMA', 0, 'POINT')}">₹0</div>
+        <div class="admin-stat-lbl">Total Revenue</div>
+      </div>
+      <div class="admin-stat-card" style="--card-accent:#ff6b6b">
+        <div class="admin-stat-icon">BUS</div>
+        <div class="admin-stat-num" th:text="${totalBuses}">0</div>
+        <div class="admin-stat-lbl">Active Buses</div>
+      </div>
+      <div class="admin-stat-card" style="--card-accent:#ffd700">
+        <div class="admin-stat-icon">USR</div>
+        <div class="admin-stat-num" th:text="${#lists.size(users)}">0</div>
+        <div class="admin-stat-lbl">Registered Users</div>
+      </div>
+    </div>
+
+    <!-- All bookings -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">All Bookings</div>
+        <div class="table-count" th:text="${#lists.size(bookings)} + ' total'"></div>
+      </div>
+      <div th:if="${#lists.isEmpty(bookings)}" class="empty-state"><div class="empty-title">No bookings yet</div></div>
+      <div style="overflow-x:auto" th:unless="${#lists.isEmpty(bookings)}">
+        <table>
+          <thead><tr><th>Booking Ref</th><th>Passenger</th><th>Route</th><th>Date</th><th>Seats</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr th:each="b : ${bookings}">
+              <td style="font-weight:600"><a style="color:var(--accent)" th:href="@{/bookings/{ref}(ref=${b.bookingRef})}" th:text="${b.bookingRef}"></a></td>
+              <td><span th:text="${b.passengerName}"></span><div class="sub" th:text="${b.passengerPhone}"></div></td>
+              <td><span th:text="${b.bus.fromCity + ' → ' + b.bus.toCity}"></span><div class="sub" th:text="${b.bus.operatorName}"></div></td>
+              <td><span th:text="${#temporals.format(b.travelDate, 'dd MMM yyyy')}"></span><div class="sub" th:text="${b.bus.departureTime}"></div></td>
+              <td th:text="${b.seatNumbers}"></td>
+              <td style="font-weight:600;color:var(--accent3)" th:text="'₹' + ${#numbers.formatDecimal(b.totalAmount, 1, 'COMMA', 0, 'POINT')}"></td>
+              <td><span class="badge" th:classappend="${b.status == 'CONFIRMED'} ? 'badge-success' : 'badge-danger'" th:text="${b.status}"></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Add / edit bus -->
+    <div class="table-card" id="bus-form">
+      <div class="table-header">
+        <div class="table-title" th:text="${editingId != null} ? 'Edit Bus #' + ${editingId} : 'Add New Bus'">Add New Bus</div>
+        <div class="table-count">Manage routes, prices and timings</div>
+      </div>
+      <form class="admin-bus-form" method="post"
+            th:action="${editingId != null} ? @{/admin/buses/{id}(id=${editingId})} : @{/admin/buses}">
+        <div class="admin-bus-grid">
+          <div class="form-group"><label class="form-label" for="busNumber">Bus Number</label>
+            <input class="form-input" id="busNumber" name="busNumber" th:value="${form.busNumber}" placeholder="MH21" required></div>
+          <div class="form-group"><label class="form-label" for="operatorName">Operator</label>
+            <input class="form-input" id="operatorName" name="operatorName" th:value="${form.operatorName}" placeholder="Shivneri" required></div>
+          <div class="form-group"><label class="form-label" for="busType">Bus Type</label>
+            <input class="form-input" id="busType" name="busType" th:value="${form.busType}" placeholder="AC Sleeper" required></div>
+          <div class="form-group"><label class="form-label" for="fromCity">From City</label>
+            <input class="form-input" id="fromCity" name="fromCity" th:value="${form.fromCity}" placeholder="Mumbai" required></div>
+          <div class="form-group"><label class="form-label" for="toCity">To City</label>
+            <input class="form-input" id="toCity" name="toCity" th:value="${form.toCity}" placeholder="Pune" required></div>
+          <div class="form-group"><label class="form-label" for="duration">Duration</label>
+            <input class="form-input" id="duration" name="duration" th:value="${form.duration}" placeholder="3h 30m" required></div>
+          <div class="form-group"><label class="form-label" for="departureTime">Departure (HH:mm)</label>
+            <input class="form-input" id="departureTime" name="departureTime" th:value="${form.departureTime}" placeholder="06:30" pattern="([01]\d|2[0-3]):[0-5]\d" required></div>
+          <div class="form-group"><label class="form-label" for="arrivalTime">Arrival (HH:mm)</label>
+            <input class="form-input" id="arrivalTime" name="arrivalTime" th:value="${form.arrivalTime}" placeholder="10:15" pattern="([01]\d|2[0-3]):[0-5]\d" required></div>
+          <div class="form-group"><label class="form-label" for="pricePerSeat">Price / Seat</label>
+            <input class="form-input" type="number" min="1" step="1" id="pricePerSeat" name="pricePerSeat" th:value="${form.pricePerSeat}" placeholder="350" required></div>
+          <div class="form-group"><label class="form-label" for="totalSeats">Total Seats</label>
+            <input class="form-input" type="number" min="1" max="100" step="1" id="totalSeats" name="totalSeats" th:value="${form.totalSeats}" placeholder="40" required></div>
+        </div>
+        <div class="admin-bus-actions">
+          <button class="btn btn-primary btn-sm" type="submit" th:text="${editingId != null} ? 'Update Bus' : 'Add Bus'">Add Bus</button>
+          <a class="btn btn-secondary btn-sm" th:if="${editingId != null}" th:href="@{/admin}">Cancel</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Seat occupancy -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">Seat Occupancy</div>
+        <div class="table-count">View booked seats by bus and date</div>
+      </div>
+      <div th:if="${seatBusId == null}" class="empty-state"><div class="empty-title">Add buses to monitor seat occupancy</div></div>
+      <div class="admin-bus-form" th:unless="${seatBusId == null}">
+        <form class="admin-seat-tools" th:action="@{/admin}" method="get">
+          <div class="form-group">
+            <label class="form-label" for="seatBus">Bus</label>
+            <select class="form-select" id="seatBus" name="seatBus">
+              <option th:each="b : ${buses}" th:value="${b.id}" th:selected="${b.id == seatBusId}"
+                      th:text="${b.busNumber + ' | ' + b.fromCity + ' → ' + b.toCity}"></option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="seatDate">Travel Date</label>
+            <input class="form-input" type="date" id="seatDate" name="seatDate" th:value="${seatDate}">
+          </div>
+          <div class="admin-bus-actions"><button class="btn btn-primary btn-sm" type="submit">Show Seats</button></div>
+        </form>
+        <div style="margin-top:14px;color:var(--text2)">
+          <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px">
+            <span><strong style="color:var(--text)" th:text="${seatTotal}">0</strong> total seats</span>
+            <span><strong style="color:var(--accent2)" th:text="${#lists.size(seatBooked)}">0</strong> booked</span>
+            <span><strong style="color:var(--accent3)" th:text="${seatAvailable}">0</strong> available</span>
+          </div>
+          <div style="font-size:13px"><strong style="color:var(--text)">Booked Seats:</strong>
+            <span th:text="${#lists.isEmpty(seatBooked)} ? 'None' : ${#strings.listJoin(seatBooked, ', ')}"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fleet -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">Bus Fleet</div>
+        <div class="table-count" th:text="${#lists.size(buses)} + ' buses'"></div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Bus No.</th><th>Operator</th><th>Route</th><th>Type</th><th>Departure</th><th>Arrival</th><th>Price</th><th>Capacity</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr th:each="b : ${buses}">
+              <td style="font-weight:600" th:text="${b.busNumber}"></td>
+              <td th:text="${b.operatorName}"></td>
+              <td th:text="${b.fromCity + ' → ' + b.toCity}"></td>
+              <td><span class="badge badge-warning" th:text="${b.busType}"></span></td>
+              <td th:text="${b.departureTime}"></td>
+              <td th:text="${b.arrivalTime}"></td>
+              <td th:text="'₹' + ${#numbers.formatDecimal(b.pricePerSeat, 1, 0)}"></td>
+              <td th:text="${b.totalSeats} + ' seats'"></td>
+              <td>
+                <a class="btn btn-secondary btn-sm" th:href="@{/admin(editBus=${b.id})} + '#bus-form'">Edit</a>
+                <details style="display:inline-block">
+                  <summary class="btn btn-danger btn-sm" style="list-style:none;cursor:pointer">Delete</summary>
+                  <form th:action="@{/admin/buses/{id}/delete(id=${b.id})}" method="post" style="margin-top:6px">
+                    <button class="btn btn-danger btn-sm" type="submit">Confirm delete</button>
+                  </form>
+                </details>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Users -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">Registered Users</div>
+        <div class="table-count" th:text="${#lists.size(users)} + ' users'"></div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr th:each="u : ${users}">
+              <td style="color:var(--text3)" th:text="'#' + ${u.id}"></td>
+              <td th:text="${u.name}"></td>
+              <td style="color:var(--text2)" th:text="${u.email}"></td>
+              <td><span class="badge" th:classappend="${u.role == 'ADMIN'} ? 'badge-info' : 'badge-success'" th:text="${u.role}"></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

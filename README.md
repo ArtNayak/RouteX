@@ -1,171 +1,107 @@
-# RouteX — Online Bus Booking System
+# RouteX: Online Bus Booking System
 
-A full-stack bus booking application implementing the IEEE SRS document.  
-**Backend:** Java 17 + Spring Boot 3 | **Frontend:** HTML / CSS / Vanilla JS
+A bus booking web application written **entirely in Java**: Spring Boot 3, Spring MVC with Thymeleaf templates, Spring Security, Spring Data JPA and an H2 database. There is no JavaScript anywhere. Every page is rendered on the server.
 
----
+Customers search routes, pick seats on a seat map, book, get a ticket and a printable bill, and cancel. Admins manage the bus fleet and see bookings, users, revenue and seat occupancy.
 
-## Project Structure
+## Features
+- **Search** by route and date, with the real number of free seats for that date.
+- **Seat map** drawn from the bus's actual seat count (2 + aisle + 2 per row). Booked seats are shown and cannot be selected.
+- **Booking** of up to 6 seats, with a demo checkout, a ticket and a text bill.
+- **My Bookings** with cancel (a confirmation step, then the seats are free again).
+- **Accounts:** register, sign in with a form, sign out.
+- **Admin dashboard:** totals and revenue, all bookings, add, edit and delete buses, seat occupancy by bus and date, user list.
 
-```
-routex/
-│
-├── pom.xml                                  Maven build file
-│
-├── src/main/java/com/routex/
-│   │
-│   ├── RouteXApplication.java               Spring Boot entry point
-│   │
-│   ├── model/                               JPA Entities (Data Layer)
-│   │   ├── User.java                        User — §2.3.1 / §2.3.2
-│   │   ├── Bus.java                         Bus — §4.1 / §4.2
-│   │   └── Booking.java                     Booking — §4.1 / §4.3
-│   │
-│   ├── repository/                          Spring Data JPA (Data Access Layer)
-│   │   ├── UserRepository.java
-│   │   ├── BusRepository.java
-│   │   └── BookingRepository.java
-│   │
-│   ├── service/                             Business Logic Layer
-│   │   ├── UserService.java                 Auth / registration
-│   │   ├── BusService.java                  Search + seat availability
-│   │   ├── BookingService.java              Booking + bill generation (§4.3)
-│   │   └── DataSeeder.java                  Seeds 20 buses + admin account
-│   │
-│   ├── controller/                          REST API (Presentation Layer)
-│   │   ├── AuthController.java              POST /api/auth/login|register
-│   │   ├── BusController.java               GET  /api/buses/search|cities|seats
-│   │   ├── BookingController.java           POST/GET/DELETE /api/bookings
-│   │   └── AdminController.java             GET  /api/admin/stats|bookings|users
-│   │
-│   └── config/
-│       └── SecurityConfig.java              Spring Security — REQ-5.3.1/5.3.2
-│
-├── src/main/resources/
-│   ├── application.properties               DB + server config
-│   │
-│   └── static/                              Frontend (served by Spring Boot)
-│       ├── index.html                       HTML shell — all pages
-│       ├── css/
-│       │   └── main.css                     All styles
-│       └── js/
-│           ├── api.js                       All backend API calls
-│           ├── ui.js                        DOM helpers, toasts, router
-│           ├── canvas.js                    3D particle background
-│           ├── seats.js                     Seat map + selection logic
-│           └── app.js                       Main controller + auth + search
-```
-
----
-
-## Architecture (IEEE SRS §2.1)
+## Run it
+You need **Java 17+** and **Maven**.
 
 ```
-Browser (HTML/CSS/JS)
-        ↕  HTTP / JSON
-Spring Boot REST Controllers
-        ↕
-Service Layer (Java Business Logic)
-        ↕
-JPA Repositories
-        ↕
-H2 / MySQL Database
-```
-
----
-
-## How to Run
-
-### Prerequisites
-- Java 17+
-- Maven 3.8+
-
-### Steps
-
-```bash
-# 1. Clone / unzip the project
-cd routex
-
-# 2. Build
-mvn clean package -DskipTests
-
-# 3. Run
 mvn spring-boot:run
-# or: java -jar target/routex-bus-booking-1.0.0.jar
+```
+Open http://localhost:8080. Or build a jar: `mvn clean package`, then `java -jar target/routex-bus-booking-1.0.0.jar`.
 
-# 4. Open browser
-http://localhost:8080
+Test data (20 buses) and the admin account are created on every start, because the default H2 database lives in memory.
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@routex.com` | `admin123` |
+| User | register any email | at least 6 characters |
+
+**Change the admin password** before using this for anything real: set `ROUTEX_ADMIN_PASSWORD` (or `routex.admin.password` in `application.properties`) before the first start.
+
+## Pages
+| URL | Who | What |
+|---|---|---|
+| `/` | everyone | home |
+| `/search?from=&to=&date=` | everyone | search results |
+| `/buses/{id}/seats?date=` | everyone to view, signed-in users to book | seat map and booking form |
+| `/login`, `/register` | everyone | sign in, create account |
+| `/bookings` | signed in | my bookings |
+| `/bookings/{ref}` | the booking's owner or an admin | ticket and bill |
+| `/admin` | admin | dashboard and fleet management |
+
+## Architecture
+```
+Browser (HTML + CSS only)
+        |  HTTP forms
+Spring MVC controllers (com.routex.web)  --  Thymeleaf templates (src/main/resources/templates)
+        |
+Services (com.routex.service)            --  booking rules, validation, bills
+        |
+Spring Data JPA repositories             --  H2 (switchable to MySQL)
+```
+Seat selection works without JavaScript: each seat is a real checkbox, styled by CSS.
+
+## Project layout
+```
+src/main/java/com/routex/
+  RouteXApplication.java
+  config/SecurityConfig.java       form login, CSRF, role rules
+  model/                           User, Bus, Booking entities
+  repository/                      JPA repositories
+  service/                         UserService, BusService, BookingService, DataSeeder
+  web/                             page controllers (home/search, auth, seats/bookings, admin)
+src/main/resources/
+  templates/                       Thymeleaf pages and the shared layout fragment
+  static/css/main.css              styles
+  application.properties
+src/test/java/com/routex/          BookingServiceTest, WebFlowTest
 ```
 
-### Switch to MySQL (Production)
+## What changed from the JavaScript version
+The original had a Java REST backend with a JavaScript single-page app on top. The front end is now Java too: the REST controllers and the `static/js` files (`app.js`, `seats.js`, `ui.js`, `api.js`, `canvas.js`) were replaced by Thymeleaf pages. While converting, these bugs and weaknesses were fixed:
 
-Edit `src/main/resources/application.properties`:
+- **Anyone could cancel anyone's booking** (`isAdmin` was hard-coded to `true`), and **any signed-in user could read any booking** by its reference. Both now require the booking's owner or an admin.
+- **Double booking was possible.** The "is the seat free?" check and the insert could race. Booking now locks the bus row for the transaction, and a test with 8 simultaneous requests for one seat confirms exactly one wins.
+- **Seat numbers were not validated.** Seats outside the bus, duplicates, or more than 6 were accepted. Past travel dates were accepted too.
+- **The price came from the client's side of the world.** The total is always computed on the server from the bus's price. The simulated payment reference is generated on the server as well, and no card or bank details are collected.
+- **Booking references** came from `count() + 1`, which can collide. They are now built from the database id.
+- **Security:** HTTP Basic with CSRF switched off was replaced by form login with CSRF protection on. The H2 web console, which was open to everyone, is off. The admin password is configurable and no longer written to the log.
+- **The seat map always drew 40 seats**, even for 36- or 44-seat buses. It now follows the bus's real seat count.
+- **The seat map no longer floats and tilts forever.** That endless 3D animation made the seats a moving click target.
+- Emails are matched case-insensitively.
 
-```properties
-# Comment out H2 section, uncomment MySQL section
-spring.datasource.url=jdbc:mysql://localhost:3306/routexdb?useSSL=false&serverTimezone=UTC
-spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
-spring.datasource.username=root
-spring.datasource.password=your_password
-spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
-spring.jpa.hibernate.ddl-auto=update
+## Tests
 ```
-
-Add MySQL dependency to `pom.xml`:
-```xml
-<dependency>
-  <groupId>com.mysql</groupId>
-  <artifactId>mysql-connector-j</artifactId>
-</dependency>
+mvn test
 ```
+17 tests: the booking rules (including the concurrent-booking race, ownership, cancellation and seat validation) and the real web flow through the full security filter chain (login, CSRF, admin-only pages, booking, ticket ownership, fleet management).
 
----
+## Notes and limits
+- **Payment is a demo.** Checkout marks the booking paid with a simulated reference. Connect a real payment provider before taking real bookings.
+- The default H2 database is in memory, so everything resets when the app stops. To keep data, switch to MySQL: in `application.properties` replace the H2 settings with a MySQL URL and driver, and add the `mysql-connector-j` dependency to `pom.xml`.
+- The pages load the Space Grotesk and Instrument Serif fonts from Google Fonts. Offline, the browser falls back to default fonts.
 
-## Demo Credentials
-
-| Role  | Email               | Password  |
-|-------|---------------------|-----------|
-| Admin | admin@routex.com    | admin123  |
-| User  | Register any email  | min 6 chars |
-
----
-
-## REST API Reference
-
-| Method | Endpoint                        | Auth     | Description                  |
-|--------|---------------------------------|----------|------------------------------|
-| POST   | /api/auth/register              | Public   | Create new account           |
-| POST   | /api/auth/login                 | Public   | Login                        |
-| GET    | /api/auth/me                    | User     | Current user info            |
-| GET    | /api/buses/cities               | Public   | List all cities              |
-| GET    | /api/buses/search?from=&to=     | Public   | Search buses by route        |
-| GET    | /api/buses/{id}/seats?date=     | Public   | Get booked seats for a date  |
-| POST   | /api/bookings                   | User     | Create booking               |
-| GET    | /api/bookings                   | User     | My bookings list             |
-| GET    | /api/bookings/{ref}             | User     | Booking detail + bill text   |
-| DELETE | /api/bookings/{ref}             | User     | Cancel booking               |
-| GET    | /api/admin/stats                | Admin    | Dashboard statistics         |
-| GET    | /api/admin/bookings             | Admin    | All bookings                 |
-| GET    | /api/admin/users                | Admin    | All users                    |
-
----
-
-## SRS Requirements Coverage
-
-| SRS Requirement        | Implementation                                              |
-|------------------------|-------------------------------------------------------------|
-| REQ-4.1.1 Calendar UI  | `<input type="date">` in search form                        |
-| REQ-4.1.2 Seat Layout  | `seats.js` — 10×4 interactive 3D seat grid                 |
-| REQ-4.1.3 No double-booking | `BookingService.areSeatsAvailable()` + DB check         |
-| REQ-4.1.4 Store details | `Booking` entity — name, seat, price, date               |
-| REQ-4.1.5 Confirmation  | `Confirmation.show()` — ticket card with ref             |
-| REQ-4.2.1 Unique seats  | Seat numbers stored as comma-separated string per booking |
-| REQ-4.2.2 Validate avail| `BusService.getBookedSeats()` via `BookingRepository`    |
-| REQ-4.3.1 Bill contents | `BookingService.generateBill()` — name, seat, price, date |
-| REQ-4.3.2 Display bill  | Ticket card rendered in `Confirmation.show()`            |
-| REQ-5.1.1 Response ≤2s  | H2 in-memory DB; indexed queries                         |
-| REQ-5.2.1 No data loss  | `@Transactional` on `BookingService.createBooking()`     |
-| REQ-5.3.1 DB auth       | `SecurityConfig` — Spring Security with BCrypt           |
-| REQ-5.3.2 Data security | HTTP Basic Auth; all endpoints authenticated except search|
-| §5.5 Admin restriction  | `@PreAuthorize("hasRole('ADMIN')")` on admin endpoints   |
-| §2.3.2 Admin role       | `role` field on `User` entity; separate admin routes     |
+## SRS requirements coverage
+| Requirement | Implementation |
+|---|---|
+| REQ-4.1.1 date selection | `<input type="date">` on the search form |
+| REQ-4.1.2 seat layout | `seats.html` seat map from the bus's seat count |
+| REQ-4.1.3 no double booking | `BookingService.createBooking()` (row lock + availability check) |
+| REQ-4.1.4 store details | `Booking` entity: passenger, seats, price, date |
+| REQ-4.1.5 confirmation | `booking.html` ticket |
+| REQ-4.2.1 / 4.2.2 seat management | `BusService.getBookedSeats()` and `areSeatsAvailable()` |
+| REQ-4.3.1 / 4.3.2 bill | `BookingService.generateBill()`, shown on the ticket page |
+| REQ-5.2.1 no data loss | `@Transactional` booking and cancellation |
+| REQ-5.3.1 / 5.3.2 security | `SecurityConfig`: BCrypt passwords, form login, CSRF, owner-only bookings |
+| §5.5 admin restriction | `/admin/**` requires `ROLE_ADMIN` |

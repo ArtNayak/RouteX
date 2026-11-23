@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Find Your Bus')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<div class="page" style="padding-top:88px">
+  <div class="container">
+    <div class="page-title">Find Your Bus</div>
+    <div class="page-sub">Search routes across major Maharashtra cities</div>
+
+    <div class="flash error" th:if="${error}" th:text="${error}" style="margin-left:0;margin-right:0"></div>
+
+    <form class="card" style="margin-bottom:32px" th:action="@{/search}" method="get">
+      <div class="search-grid">
+        <div class="form-group">
+          <label class="form-label" for="from">From</label>
+          <select class="form-select" id="from" name="from" required>
+            <option value="">Select City</option>
+            <option th:each="c : ${cities}" th:value="${c}" th:text="${c}" th:selected="${c == from}"></option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="to">To</label>
+          <select class="form-select" id="to" name="to" required>
+            <option value="">Select City</option>
+            <option th:each="c : ${cities}" th:value="${c}" th:text="${c}" th:selected="${c == to}"></option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="date">Travel Date</label>
+          <input class="form-input" type="date" id="date" name="date" required
+                 th:min="${today}" th:value="${date}">
+        </div>
+        <button class="btn btn-primary" type="submit">Search &rarr;</button>
+      </div>
+    </form>
+
+    <div th:if="${results != null}">
+      <div th:if="${#lists.isEmpty(results)}" class="empty-state">
+        <div class="empty-icon">&#128652;</div>
+        <div class="empty-title">No buses found</div>
+        <p>Try a different route or date.</p>
+      </div>
+
+      <div th:unless="${#lists.isEmpty(results)}">
+        <div style="margin-bottom:16px;color:var(--text2);font-size:14px">
+          <strong style="color:var(--text)" th:text="${#lists.size(results)}">0</strong> bus(es) found for
+          <strong style="color:var(--text)" th:text="${from + ' → ' + to}">A → B</strong> on
+          <strong style="color:var(--text)" th:text="${#temporals.format(date, 'dd MMM yyyy')}">date</strong>
+        </div>
+
+        <a class="bus-result-link" th:each="r : ${results}"
+           th:href="@{/buses/{id}/seats(id=${r.bus.id}, date=${date})}">
+          <div class="bus-result-card">
+            <div>
+              <div class="bus-name" th:text="${r.bus.operatorName}">Operator</div>
+              <div class="bus-type-badge" th:text="${r.bus.busType}">AC</div>
+            </div>
+            <div>
+              <div class="time-big" th:text="${r.bus.departureTime}">06:00</div>
+              <div class="time-city" th:text="${r.bus.fromCity}">From</div>
+            </div>
+            <div class="duration-col">
+              <div class="duration-text" th:text="${r.bus.duration}">3h</div>
+              <div class="duration-line"></div>
+              <div class="duration-text">Non-stop</div>
+            </div>
+            <div>
+              <div class="time-big" th:text="${r.bus.arrivalTime}">09:30</div>
+              <div class="time-city" th:text="${r.bus.toCity}">To</div>
+            </div>
+            <div>
+              <div class="price-big" th:text="'₹' + ${#numbers.formatDecimal(r.bus.pricePerSeat, 1, 0)}">₹350</div>
+              <div class="price-sub">per seat</div>
+              <div class="seats-left" th:classappend="${r.availableSeats < 8} ? 'seats-low' : 'seats-ok'"
+                   th:text="${r.availableSeats == 0} ? 'Sold out' : ${r.availableSeats} + ' seats left'">seats</div>
+            </div>
+            <span class="btn btn-primary btn-sm">Select Seats &rarr;</span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

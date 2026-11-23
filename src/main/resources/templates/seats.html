@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Select Seats')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<div class="page" style="padding-top:0">
+  <div class="container">
+    <div style="margin-bottom:20px">
+      <a class="btn btn-secondary btn-sm"
+         th:href="@{/search(from=${bus.fromCity}, to=${bus.toCity}, date=${date})}">&larr; Back to Results</a>
+    </div>
+
+    <div class="page-title" th:text="${bus.fromCity + ' → ' + bus.toCity}">A → B</div>
+    <div class="page-sub"
+         th:text="${bus.operatorName + ' | ' + bus.busType + ' | ' + #temporals.format(date, 'dd MMM yyyy')}">details</div>
+
+    <!-- One form: the checked seat boxes and the passenger details are posted together -->
+    <form th:action="@{/bookings}" method="post">
+      <input type="hidden" name="busId" th:value="${bus.id}">
+      <input type="hidden" name="travelDate" th:value="${date}">
+
+      <div class="seat-booking-layout">
+        <div class="card">
+          <h3 style="font-size:16px;font-weight:600;margin-bottom:24px">
+            Pick your seats <span style="color:var(--text3);font-weight:400;font-size:13px"
+                                  th:text="'(up to ' + ${maxSeats} + ')'"></span>
+          </h3>
+          <div class="bus-3d-wrapper">
+            <div class="bus-3d-body">
+              <div class="bus-driver-row">
+                <div class="steering-icon">DRV</div>
+                <div>Driver Section</div>
+              </div>
+              <div id="seat-map">
+                <div class="seat-row" th:each="row : ${rows}">
+                  <th:block th:each="s, st : ${row}">
+                    <div class="aisle-gap" th:if="${st.index == 2}"></div>
+                    <div class="seat booked" th:if="${s.booked}"
+                         th:title="'Seat ' + ${s.number} + ' - Booked'" th:text="${s.number}"></div>
+                    <th:block th:unless="${s.booked}">
+                      <input class="seat-input" type="checkbox" name="seats"
+                             th:id="'seat-' + ${s.number}" th:value="${s.number}"
+                             th:checked="${form.seats != null and form.seats.contains(s.number)}">
+                      <label class="seat available" th:for="'seat-' + ${s.number}"
+                             th:title="'Seat ' + ${s.number}" th:text="${s.number}"></label>
+                    </th:block>
+                  </th:block>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="seat-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(67,233,123,0.2);border:1.5px solid rgba(67,233,123,0.4)"></div>Available</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(108,99,255,0.25);border:1.5px solid #6c63ff"></div>Selected</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(255,107,107,0.08);border:1.5px solid rgba(255,107,107,0.2)"></div>Booked</div>
+          </div>
+          <p style="text-align:center;color:var(--text3);font-size:13px;margin-top:12px"
+             th:text="${bus.totalSeats - bookedCount} + ' of ' + ${bus.totalSeats} + ' seats free on this date'"></p>
+        </div>
+
+        <div class="booking-summary">
+          <div class="summary-title">Booking Summary</div>
+          <div class="summary-row"><span class="lbl">Route</span><span class="val" th:text="${bus.fromCity + ' → ' + bus.toCity}"></span></div>
+          <div class="summary-row"><span class="lbl">Operator</span><span class="val" th:text="${bus.operatorName}"></span></div>
+          <div class="summary-row"><span class="lbl">Date</span><span class="val" th:text="${#temporals.format(date, 'dd MMM yyyy')}"></span></div>
+          <div class="summary-row"><span class="lbl">Departs</span><span class="val" th:text="${bus.departureTime}"></span></div>
+          <div class="summary-row"><span class="lbl">Per Seat</span><span class="val" th:text="'₹' + ${#numbers.formatDecimal(bus.pricePerSeat, 1, 0)}"></span></div>
+          <div class="summary-total">
+            <span>Total</span>
+            <span class="amount" style="font-size:14px">price &times; seats, shown on your ticket</span>
+          </div>
+
+          <div class="passenger-form">
+            <div class="form-group">
+              <label class="form-label" for="passengerName">Passenger Name</label>
+              <input class="form-input" type="text" id="passengerName" name="passengerName" maxlength="80"
+                     placeholder="Full name" required th:value="${form.passengerName}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="passengerPhone">Phone Number</label>
+              <input class="form-input" type="tel" id="passengerPhone" name="passengerPhone"
+                     placeholder="10-digit mobile" required pattern="\d{10}" inputmode="numeric"
+                     th:value="${form.passengerPhone}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="passengerAge">Age</label>
+              <input class="form-input" type="number" id="passengerAge" name="passengerAge"
+                     placeholder="Your age" min="1" max="120" required th:value="${form.passengerAge}">
+            </div>
+          </div>
+
+          <div class="passenger-form" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+            <div class="form-group">
+              <label class="form-label" for="paymentMethod">Payment Method</label>
+              <select class="form-select" id="paymentMethod" name="paymentMethod">
+                <option value="CARD" th:selected="${form.paymentMethod == 'CARD'}">Card</option>
+                <option value="UPI" th:selected="${form.paymentMethod == 'UPI'}">UPI</option>
+                <option value="NET_BANKING" th:selected="${form.paymentMethod == 'NET_BANKING'}">Net Banking</option>
+                <option value="WALLET" th:selected="${form.paymentMethod == 'WALLET'}">Wallet</option>
+              </select>
+            </div>
+            <p style="font-size:12px;color:var(--text3);line-height:1.6">
+              Demo checkout: no card or bank details are collected. The booking is marked paid with a simulated payment reference.
+            </p>
+          </div>
+
+          <button class="btn btn-primary btn-full" style="margin-top:16px" type="submit"
+                  sec:authorize="isAuthenticated()">Pay &amp; Book Selected Seats</button>
+          <a class="btn btn-primary btn-full" style="margin-top:16px" th:href="@{/login}"
+             sec:authorize="!isAuthenticated()">Sign in to book</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>

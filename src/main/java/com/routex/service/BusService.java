@@ -142,6 +142,17 @@ public class BusService {
         return requestedSeats.stream().noneMatch(booked::contains);
     }
 
+    /** A bus together with how many of its seats are still free on a given date. */
+    public record BusAvailability(Bus bus, int availableSeats) {}
+
+    /** Search results with accurate availability for the travel date (REQ-4.1.2). */
+    public List<BusAvailability> searchWithAvailability(String from, String to, LocalDate date) {
+        return searchBuses(from, to).stream()
+                .map(bus -> new BusAvailability(bus,
+                        bus.getTotalSeats() - getBookedSeats(bus.getId(), date).size()))
+                .toList();
+    }
+
     public List<String> getAvailableCities() {
         return busRepository.findAll().stream()
                 .flatMap(b -> java.util.stream.Stream.of(b.getFromCity(), b.getToCity()))

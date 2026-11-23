@@ -25,6 +25,11 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    static final String DEFAULT_ADMIN_PASSWORD = "admin123";
+
+    @org.springframework.beans.factory.annotation.Value("${routex.admin.password:" + DEFAULT_ADMIN_PASSWORD + "}")
+    private String adminPassword;
+
     @Override
     public void run(String... args) {
         seedAdmin();
@@ -37,10 +42,15 @@ public class DataSeeder implements CommandLineRunner {
         userRepository.save(User.builder()
                 .name("Admin User")
                 .email("admin@routex.com")
-                .password(passwordEncoder.encode("admin123"))
+                .password(passwordEncoder.encode(adminPassword))
                 .role("ADMIN")
                 .build());
-        log.info("Admin seeded: admin@routex.com / admin123");
+        if (DEFAULT_ADMIN_PASSWORD.equals(adminPassword)) {
+            log.warn("Admin account admin@routex.com created with the demo password. "
+                    + "Set routex.admin.password (or ROUTEX_ADMIN_PASSWORD) before using this for real.");
+        } else {
+            log.info("Admin account admin@routex.com created.");
+        }
     }
 
     private void seedBuses() {

@@ -94,8 +94,7 @@ nav {
 /* ============================================================
    PAGES
    ============================================================ */
-.page { display: none; min-height: 100vh; padding-top: 80px; position: relative; z-index: 1; }
-.page.active { display: block; animation: fadeIn 0.3s ease; }
+.page { min-height: 100vh; padding-top: 80px; position: relative; z-index: 1; animation: fadeIn 0.3s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ============================================================
@@ -273,7 +272,7 @@ nav {
 .bus-3d-body {
   background: linear-gradient(135deg, var(--surface2), var(--surface3));
   border: 1px solid var(--border2); border-radius: 20px; padding: 24px 20px;
-  animation: busFloat 5s ease-in-out infinite;
+  transform: rotateX(1deg);   /* slight fixed tilt; the old endless float made seats a moving click target */
   position: relative; overflow: hidden;
 }
 .bus-3d-body::before {
@@ -593,3 +592,29 @@ td .sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
   .ticket-grid { grid-template-columns: 1fr; }
   .nav-links .nav-btn { padding: 8px 12px; font-size: 13px; }
 }
+
+
+/* ============================================================
+   SERVER-RENDERED UI (Thymeleaf): no JavaScript needed
+   ============================================================ */
+/* seats are real checkboxes; the label is the visible seat */
+.seat-input { position: absolute; opacity: 0; pointer-events: none; }
+.seat-input:checked + label.seat.available {
+  background: rgba(108,99,255,0.25); border-color: var(--accent); color: white;
+  box-shadow: 0 4px 16px rgba(108,99,255,0.4); transform: scale(1.1) translateY(-2px);
+}
+.seat-input:focus-visible + label.seat { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seat-spacer { width: 40px; }
+
+.flash { max-width: 1100px; margin: 0 auto 20px; padding: 14px 18px; border-radius: 12px; font-size: 14px; }
+.flash.error   { background: rgba(255,107,107,0.12); border: 1px solid rgba(255,107,107,0.35); color: var(--accent2); }
+.flash.success { background: rgba(67,233,123,0.12);  border: 1px solid rgba(67,233,123,0.35);  color: var(--accent3); }
+.flash ul { margin: 0; padding-left: 18px; }
+
+.nav-form { display: inline; margin: 0; }
+a.nav-btn, a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+a.bus-result-link { color: inherit; text-decoration: none; display: block; }
+.inline-form { display: inline; margin: 0; }
+.auth-card { max-width: 440px; margin: 0 auto; }
+.field-error { font-size: 12px; color: var(--accent2); margin-top: 4px; }
+.page-center { text-align: center; }

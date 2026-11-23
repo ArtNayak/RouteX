@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sign in')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<div class="page" style="padding-top:0">
+  <div class="container">
+    <div class="card auth-card">
+      <div class="modal-title">Welcome back</div>
+      <div class="modal-sub">Sign in to manage your bookings</div>
+
+      <div class="flash error" th:if="${param.error != null}">Invalid email or password.</div>
+      <div class="flash success" th:if="${param.logout != null}">You have been signed out.</div>
+
+      <form class="modal-form" th:action="@{/login}" method="post">
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input class="form-input" type="email" id="email" name="email" placeholder="you@example.com" required autofocus>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-input" type="password" id="password" name="password" placeholder="••••••••" required>
+        </div>
+        <button class="btn btn-primary btn-full" type="submit">Sign In</button>
+      </form>
+      <p style="margin-top:16px;text-align:center;color:var(--text2);font-size:14px">
+        New to RouteX? <a th:href="@{/register}" style="color:var(--accent)">Create an account</a>
+      </p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Booking')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<div class="page" style="padding-top:0">
+  <div class="container-sm page-center">
+    <div th:if="${param.new != null}">
+      <div class="confirmation-icon">&#10003;</div>
+      <h1 style="font-family:'Instrument Serif',serif;font-size:36px;font-style:italic;margin-bottom:8px">Booking Confirmed!</h1>
+      <p style="color:var(--text2);margin-bottom:8px">Your ticket is reserved. Have a great journey!</p>
+    </div>
+    <h1 th:if="${param.new == null}" style="font-family:'Instrument Serif',serif;font-size:32px;margin-bottom:16px">Your ticket</h1>
+
+    <div class="ticket-card" style="text-align:left">
+      <div class="ticket-header">
+        <div style="font-size:13px;opacity:0.8;margin-bottom:6px" th:text="${booking.bus.operatorName}">Operator</div>
+        <div class="ticket-route" th:text="${booking.bus.fromCity + ' → ' + booking.bus.toCity}">A → B</div>
+        <div class="ticket-meta"
+             th:text="${#temporals.format(booking.travelDate, 'dd MMM yyyy') + ' · ' + booking.bus.departureTime + ' – ' + booking.bus.arrivalTime}">when</div>
+      </div>
+      <div class="ticket-divider">
+        <div class="ticket-notch"></div>
+        <div class="ticket-perf"></div>
+        <div class="ticket-notch"></div>
+      </div>
+      <div class="ticket-body">
+        <div class="ticket-grid">
+          <div><div class="tf-label">Passenger</div><div class="tf-value" th:text="${booking.passengerName}"></div></div>
+          <div><div class="tf-label">Seat(s)</div><div class="tf-value" th:text="${booking.seatNumbers}"></div></div>
+          <div><div class="tf-label">Age</div><div class="tf-value" th:text="${booking.passengerAge + ' yrs'}"></div></div>
+          <div><div class="tf-label">Bus Type</div><div class="tf-value" th:text="${booking.bus.busType}"></div></div>
+          <div><div class="tf-label">Phone</div><div class="tf-value" th:text="${booking.passengerPhone}"></div></div>
+          <div><div class="tf-label">Payment</div><div class="tf-value" th:text="${booking.paymentStatus + ' (' + booking.paymentMethod + ')'}"></div></div>
+          <div><div class="tf-label">Txn Ref</div><div class="tf-value" th:text="${booking.paymentReference}"></div></div>
+          <div>
+            <div class="tf-label">Total Fare</div>
+            <div class="tf-value" style="color:var(--accent3)"
+                 th:text="'₹' + ${#numbers.formatDecimal(booking.totalAmount, 1, 'COMMA', 2, 'POINT')}"></div>
+          </div>
+        </div>
+      </div>
+      <div class="ticket-footer">
+        <div>
+          <div style="font-size:11px;color:var(--text3)">Booking Reference</div>
+          <div style="font-weight:700;font-size:15px" th:text="${booking.bookingRef}"></div>
+        </div>
+        <span class="badge" th:classappend="${booking.status == 'CONFIRMED'} ? 'badge-success' : 'badge-danger'"
+              th:text="${booking.status}"></span>
+      </div>
+    </div>
+
+    <details style="text-align:left;margin:0 auto 24px;max-width:600px">
+      <summary style="cursor:pointer;color:var(--text2);margin-bottom:8px">Show printable bill</summary>
+      <pre style="background:var(--surface2);padding:16px;border-radius:12px;overflow-x:auto;font-size:12px" th:text="${bill}"></pre>
+    </details>
+
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+      <a class="btn btn-primary btn-lg" th:href="@{/bookings}">View All Bookings</a>
+      <a class="btn btn-secondary btn-lg" th:href="@{/search}">Book Another</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -22,20 +22,26 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     public User register(String name, String email, String password) {
-        if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already registered: " + email);
+        String normalizedEmail = normalizeEmail(email);
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            throw new IllegalArgumentException("Email already registered: " + normalizedEmail);
         }
         User user = User.builder()
-                .name(name)
-                .email(email)
+                .name(name.trim())
+                .email(normalizedEmail)
                 .password(passwordEncoder.encode(password))
                 .role("USER")
                 .build();
         return userRepository.save(user);
     }
 
+    /** Emails are compared case-insensitively, so they are always stored trimmed and lower-case. */
+    public static String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
     public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
+        return userRepository.findByEmail(normalizeEmail(email));
     }
 
     public Optional<User> findById(Long id) {

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Online Bus Booking')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<div class="page">
+  <div class="hero">
+    <div class="hero-badge">
+      <div class="hero-badge-dot"></div>
+      Live seat availability across <span th:text="${routeCount}">20</span> services
+    </div>
+    <h1>Travel <span>smarter,</span><br>arrive happier</h1>
+    <p>Book bus tickets in seconds. Real-time seat selection, instant confirmation, and zero hassle.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary btn-lg" th:href="@{/search}">Book Now</a>
+      <a class="btn btn-secondary btn-lg" th:href="@{/bookings}">My Bookings &rarr;</a>
+    </div>
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-num" th:text="${totalBookings}">0</div>
+        <div class="stat-label">Total Bookings</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" th:text="${routeCount}">20</div>
+        <div class="stat-label">Bus Services</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" th:text="${cityCount}">8</div>
+        <div class="stat-label">Cities Covered</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

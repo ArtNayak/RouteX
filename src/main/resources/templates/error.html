@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Error')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<div class="page" style="padding-top:88px">
+  <div class="container-sm page-center">
+    <div class="empty-state">
+      <div class="empty-icon" th:text="${status}">404</div>
+      <div class="empty-title" th:text="${title != null} ? ${title} : (${error != null} ? ${error} : 'Something went wrong')">Error</div>
+      <p th:if="${message != null and !#strings.isEmpty(message)}" th:text="${message}"></p>
+      <a class="btn btn-primary" style="margin-top:24px" th:href="@{/}">Back to home</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>
