@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RouteX — Online Bus Booking</title>
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <!-- App Styles -->
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+
+<!-- 3D Particle Background -->
+<canvas id="hero-canvas"></canvas>
+
+<!-- ================================================================
+     NAVBAR
+     ================================================================ -->
+<nav>
+  <div class="nav-logo" onclick="UI.showPage('home')">RouteX</div>
+  <div class="nav-links">
+    <button class="nav-btn ghost" onclick="UI.showPage('home')">Home</button>
+    <button class="nav-btn ghost" onclick="UI.showPage('search')">Book Ticket</button>
+    <button class="nav-btn ghost" onclick="App.requireAuth('bookings')">My Bookings</button>
+    <button class="nav-btn ghost" id="nav-admin" style="display:none" onclick="App.requireAuth('admin')">Admin</button>
+    <span class="nav-user-pill" id="nav-user" style="display:none"></span>
+    <button class="nav-btn ghost" id="nav-login" onclick="UI.openAuthModal('login')">Login</button>
+    <button class="nav-btn danger" id="nav-logout" style="display:none" onclick="App.logout()">Logout</button>
+  </div>
+</nav>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- ================================================================
+     AUTH MODAL
+     ================================================================ -->
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="UI.closeAuthModal()">✕</button>
+
+    <!-- Tab Switcher -->
+    <div class="tab-switcher">
+      <button class="tab-btn active" id="tab-login"    onclick="UI.switchAuthTab('login')">Login</button>
+      <button class="tab-btn"        id="tab-register" onclick="UI.switchAuthTab('register')">Register</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="form-login">
+      <div class="modal-title">Welcome back</div>
+      <div class="modal-sub">Sign in to manage your bookings</div>
+      <div class="modal-form">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" type="email" id="login-email" placeholder="you@example.com"
+                 onkeydown="if(event.key==='Enter') App.handleLogin()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" id="login-pass" placeholder="••••••••"
+                 onkeydown="if(event.key==='Enter') App.handleLogin()">
+        </div>
+        <button class="btn btn-primary btn-full" id="login-submit" onclick="App.handleLogin()">Sign In</button>
+      </div>
+      <div style="margin-top:14px;padding:12px;background:var(--surface2);border-radius:10px;font-size:13px;color:var(--text2);line-height:1.8">
+        Demo Admin: <strong style="color:var(--text)">admin@routex.com</strong> / <strong style="color:var(--text)">admin123</strong><br>
+        Or register a new account below.
+      </div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="form-register" style="display:none">
+      <div class="modal-title">Create account</div>
+      <div class="modal-sub">Join RouteX for seamless travel</div>
+      <div class="modal-form">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input class="form-input" type="text" id="reg-name" placeholder="John Doe">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" type="email" id="reg-email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" id="reg-pass" placeholder="Min 6 characters">
+        </div>
+        <button class="btn btn-primary btn-full" id="reg-submit" onclick="App.handleRegister()">Create Account</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     PAGE: HOME
+     ================================================================ -->
+<div class="page active" id="page-home">
+  <div class="hero">
+    <div class="hero-badge">
+      <div class="hero-badge-dot"></div>
+      Live seat availability across 20+ routes
+    </div>
+    <h1>Travel <span>smarter,</span><br>arrive happier</h1>
+    <p>Book bus tickets in seconds. Real-time seat selection, instant confirmation, and zero hassle.</p>
+    <div class="hero-actions">
+      <button class="btn btn-primary btn-lg" onclick="UI.showPage('search')">🎫 Book Now</button>
+      <button class="btn btn-secondary btn-lg" onclick="App.requireAuth('bookings')">My Bookings →</button>
+    </div>
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-num" id="stat-bookings">0</div>
+        <div class="stat-label">Total Bookings</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">20+</div>
+        <div class="stat-label">Bus Routes</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">8</div>
+        <div class="stat-label">Cities Covered</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">4.9★</div>
+        <div class="stat-label">Avg Rating</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     PAGE: SEARCH
+     ================================================================ -->
+<div class="page" id="page-search">
+  <div class="container">
+    <div class="page-title">Find Your Bus</div>
+    <div class="page-sub">Search from 20+ routes across major Maharashtra cities</div>
+
+    <div class="card" style="margin-bottom:32px">
+      <div class="search-grid">
+        <div class="form-group">
+          <label class="form-label">From</label>
+          <select class="form-select" id="search-from">
+            <option value="">Select City</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">To</label>
+          <select class="form-select" id="search-to">
+            <option value="">Select City</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Travel Date</label>
+          <input class="form-input" type="date" id="search-date">
+        </div>
+        <button class="btn btn-primary" onclick="App.searchBuses()">Search →</button>
+      </div>
+    </div>
+
+    <div id="search-results"></div>
+  </div>
+</div>
+
+<!-- ================================================================
+     PAGE: SEAT SELECTION
+     ================================================================ -->
+<div class="page" id="page-seats">
+  <div class="container">
+    <div id="seat-page-content"></div>
+  </div>
+</div>
+
+<!-- ================================================================
+     PAGE: CONFIRMATION
+     ================================================================ -->
+<div class="page" id="page-confirmation">
+  <div class="container-sm">
+    <div id="confirmation-content"></div>
+  </div>
+</div>
+
+<!-- ================================================================
+     PAGE: MY BOOKINGS
+     ================================================================ -->
+<div class="page" id="page-bookings">
+  <div class="container-md">
+    <div class="page-title">My Bookings</div>
+    <div class="page-sub">All your travel reservations in one place</div>
+    <div id="bookings-list"></div>
+  </div>
+</div>
+
+<!-- ================================================================
+     PAGE: ADMIN DASHBOARD
+     ================================================================ -->
+<div class="page" id="page-admin">
+  <div class="container">
+    <div class="page-title">Admin Dashboard</div>
+    <div class="page-sub">Manage buses, routes, bookings, and users</div>
+    <div id="admin-content"></div>
+  </div>
+</div>
+
+<!-- ================================================================
+     JavaScript Modules (order matters)
+     ================================================================ -->
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/canvas.js"></script>
+<script src="/js/seats.js"></script>
+<script src="/js/app.js"></script>
+
+</body>
+</html>
